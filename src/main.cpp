@@ -2,7 +2,14 @@
 #include <argparse.h>
 #include <io.h>
 #include <vector>
-#include "body.h"
+#include "barnes_hut_struct.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <GL/glu.h>
+#include <GL/glut.h>
 using namespace std;
 
 int main(int argc, char **argv)
@@ -10,7 +17,7 @@ int main(int argc, char **argv)
     // Parse args
     struct options_t opts;
     get_opts(argc, argv, &opts);
-    vector<body_t> bodies;
+    vector<Body> bodies;
     int num_bodies;
     read_file(&opts, &num_bodies, bodies);
     printf("Input file: %s\nOutput file: %s\nSteps: %d\nTheta: %f\nTimestep: %f\nVisual: %s\n", 
@@ -24,4 +31,27 @@ int main(int argc, char **argv)
                ", X Vel: " << bodies[i].xvel <<
                ", Y Vel: " << bodies[i].yvel << endl;
     }
+    /**
+    // OpenGL window dims
+    int width=600, height=600;
+    GLFWwindow* window;
+    if( !glfwInit() ){
+        fprintf( stderr, "Failed to initialize GLFW\n" );
+        return -1;
+    }
+    // Open a window and create its OpenGL context
+    window = glfwCreateWindow( width, height, "Simulation", NULL, NULL);
+    if( window == NULL ){
+        fprintf( stderr, "Failed to open GLFW window.\n" );
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window); // Initialize GLEW
+    if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "Failed to initialize GLEW\n");
+        return -1;
+    }
+    // Ensure we can capture the escape key being pressed below
+    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    **/
 }
