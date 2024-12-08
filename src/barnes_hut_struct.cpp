@@ -44,67 +44,48 @@ Body Body::add(Body a, Body b) {
 }
 
 void QuadTree::insert(Body b) {
-  std::cout << "Request to insert (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << "\n";
   if(body == nullptr) {
-    std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "No body at node. Inserted body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << "\n";
     body = new Body(b);
     return;
   } else {
     if(body->idx == -1) {
-      std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Internal node with body (" << body->xpos << ", " << body->ypos << ") and mass " << body->mass << "\n";
       Body updateBody = Body::add(*body, b);
       body = new Body(updateBody);
-      std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Updated center-of-mass and total mass: (" << body->xpos << ", " << body->ypos << ") and mass " << body->mass << "\n";
       if (quad.NW().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into northwest tree\n";
           NW->insert(b);
       } else if (quad.NE().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into northeast tree\n";
           NE->insert(b);
       } else if (quad.SW().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into southwest tree\n";
           SW->insert(b);
       } else if (quad.SE().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into southeast tree\n";
           SE->insert(b);
       }
     } else {
-      std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "External node with body (" << body->xpos << ", " << body->ypos << ") and mass " << body->mass << "\n";
-      std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Subdividing region\n";
       NW = new QuadTree(quad.NW());
       NE = new QuadTree(quad.NE());
       SW = new QuadTree(quad.SW());
       SE = new QuadTree(quad.SE());
       if (quad.NW().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into northwest tree\n";
           NW->insert(b);
       } else if (quad.NE().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into northeast tree\n";
           NE->insert(b);
       } else if (quad.SW().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into southwest tree\n";
           SW->insert(b);
       } else if (quad.SE().contains(b.xpos, b.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted new body (" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << " into southeast tree\n";
           SE->insert(b);
       }
       Body copy = *body;
       if (quad.NW().contains(copy.xpos, copy.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted copied body (" << copy.xpos << ", " << copy.ypos << ") and mass " << copy.mass << " into northwest tree\n";
           NW->insert(copy);
       } else if (quad.NE().contains(copy.xpos, copy.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted copied body (" << copy.xpos << ", " << copy.ypos << ") and mass " << copy.mass << " into northeast tree\n";
           NE->insert(copy);
       } else if (quad.SW().contains(copy.xpos, copy.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted copied body (" << copy.xpos << ", " << copy.ypos << ") and mass " << copy.mass << " into southwest tree\n";
           SW->insert(copy);
       } else if (quad.SE().contains(copy.xpos, copy.ypos)) {
-          std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Inserted copied body (" << copy.xpos << ", " << copy.ypos << ") and mass " << copy.mass << " into southeast tree\n";
           SE->insert(copy);
       }
       Body updateBody = Body::add(copy, b);
       body = new Body(updateBody);
-      std::cout << "(" << b.xpos << ", " << b.ypos << ") and mass " << b.mass << ": " << "Updated center-of-mass and total mass: (" << body->xpos << ", " << body->ypos << ") and mass " << body->mass << "\n";
     }
   }
 }
