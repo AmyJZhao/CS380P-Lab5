@@ -26,9 +26,8 @@ class Body {
 };
 
 class QuadTree {
-  Body body;
+  Body* body = nullptr;
   Quad quad;
-  bool isExternal = true;
   QuadTree* NW = nullptr;
   QuadTree* NE = nullptr;
   QuadTree* SW = nullptr;
@@ -37,7 +36,8 @@ class QuadTree {
     QuadTree(Quad q) : quad(q) {};
     void insert(Body b);
     void updateForce(Body b);
-}
+    void printTree(int depth = 0);
+};
 
 
 #endif

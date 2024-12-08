@@ -12,6 +12,7 @@
 #include <GL/glut.h>
 using namespace std;
 
+// ./nbody -i input/nb-10.txt -o out.txt -s 10 -t 0.00004 -d 0.5
 int main(int argc, char **argv)
 {
     // Parse args
@@ -31,6 +32,12 @@ int main(int argc, char **argv)
                ", X Vel: " << bodies[i].xvel <<
                ", Y Vel: " << bodies[i].yvel << endl;
     }
+    Quad domain(4.0, 0.0, 0.0);
+    QuadTree tree(domain);
+    for (int i = 0; i < max; i++) {
+        tree.insert(bodies[i]);
+    }
+    tree.printTree();
     /**
     // OpenGL window dims
     int width=600, height=600;
