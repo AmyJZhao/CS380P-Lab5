@@ -2,6 +2,9 @@
 #define _BODY_H
 #include <iostream>
 
+const double G = 0.0001;
+const double rlimit = 0.03;
+
 class Quad {
   double length;
   double lowerLeftX;
@@ -35,7 +38,7 @@ class QuadTree {
   public:
     QuadTree(Quad q) : quad(q) {};
     void insert(Body b);
-    void updateForce(Body b);
+    std::pair<double, double> calculateNetForce(Body b, double theta);
     void printTree(int depth = 0);
 };
 

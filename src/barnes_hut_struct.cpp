@@ -1,4 +1,5 @@
 #include "barnes_hut_struct.h"
+#include <cmath>
 
 Quad::Quad(double l, double x, double y) {
   length = l;
@@ -126,4 +127,59 @@ void QuadTree::printTree(int depth) {
       SE->printTree(depth + 1); // Recursively print SE child
   }
 
+}
+
+std::pair<double, double> QuadTree::calculateNetForce(Body b, double theta) {
+  double Fx = 0.0;
+  double Fy = 0.0;
+  if(body != nullptr && body->idx != -1 && body->idx != b.idx) {
+    double dx = abs(body->xpos - b.xpos);
+    double dy = abs(body->ypos - b.ypos);
+    double d = sqrt(dx * dx + dy * dy);
+    if(d < rlimit) {
+      d = rlimit;
+    }
+    double force = G * b.mass * body->mass / (d * d * d);
+    Fx += force * dx;
+    Fy += force * dy;
+    return std::make_pair(Fx, Fy);
+  }
+  if(body != nullptr && body->idx == -1) {
+    double dx = abs(body->xpos - b.xpos);
+    double dy = abs(body->ypos - b.ypos);
+    double d = sqrt(dx * dx + dy * dy);
+    if(d < rlimit) {
+      d = rlimit;
+    }
+    double s = quad.len();
+    double ratio = s / d;
+    if(ratio < theta) {
+      double force = G * b.mass * body->mass / (d * d * d);
+      Fx += force * dx;
+      Fy += force * dy;
+    } else {
+      if (NW != nullptr) {
+          auto childForce = NW->calculateNetForce(b, theta);
+          Fx += childForce.first;
+          Fy += childForce.second;
+      }
+      if (NE != nullptr) {
+          auto childForce = NE->calculateNetForce(b, theta);
+          Fx += childForce.first;
+          Fy += childForce.second;
+      }
+      if (SW != nullptr) {
+          auto childForce = SW->calculateNetForce(b, theta);
+          Fx += childForce.first;
+          Fy += childForce.second;
+      }
+      if (SE != nullptr) {
+          auto childForce = SE->calculateNetForce(b, theta);
+          Fx += childForce.first;
+          Fy += childForce.second;
+      }
+    }
+    
+  }
+  return std::make_pair(Fx, Fy);
 }
