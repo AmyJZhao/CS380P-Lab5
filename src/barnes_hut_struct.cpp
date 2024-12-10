@@ -8,8 +8,8 @@ Quad::Quad(double l, double x, double y) {
 }
 
 bool Quad::contains(double x, double y) {
-  return (x >= lowerLeftX && x <= lowerLeftX + length) &&
-           (y >= lowerLeftY && y <= lowerLeftY + length);
+  return (x >= lowerLeftX && x < lowerLeftX + length) &&
+           (y >= lowerLeftY && y < lowerLeftY + length);
 }
 
 double Quad::len() {
@@ -182,4 +182,131 @@ std::pair<double, double> QuadTree::calculateNetForce(Body b, double theta) {
     
   }
   return std::make_pair(Fx, Fy);
+}
+
+void broadcastQuadTree(QuadTree *tree, int rank, MPI_Comm comm) {
+  std::vector<char> buffer;
+    if (rank == 0) {
+        // Root process serializes the tree
+        serializeTreeNode(tree, buffer);
+    }
+    // Broadcast the serialized tree structure and body data to all other processes
+    int buffer_size = buffer.size();
+    MPI_Bcast(&buffer_size, 1, MPI_INT, rank, comm);
+    MPI_Bcast(buffer.data(), buffer_size, MPI_BYTE, rank, comm);
+
+    // Deserializing the tree into the QuadTree structure for all processes
+    size_t offset = 0;
+    deserializeTreeNode(tree, buffer, offset);
+
+}
+
+void serializeTreeNode(const QuadTree *node, std::vector<char> &buffer) {
+    if (node == nullptr) {
+        return;
+    }
+  
+    // Serialize the current node's Quad data
+    buffer.push_back(static_cast<char>(node->body != nullptr)); // 1 byte to indicate if this is a leaf node
+
+    if (node->body) {
+        // Serialize Body attributes: idx, mass, xpos, ypos, xvel, yvel
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->idx), reinterpret_cast<const char*>(&node->body->idx) + sizeof(node->body->idx));
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->mass), reinterpret_cast<const char*>(&node->body->mass) + sizeof(node->body->mass));
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->xpos), reinterpret_cast<const char*>(&node->body->xpos) + sizeof(node->body->xpos));
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->ypos), reinterpret_cast<const char*>(&node->body->ypos) + sizeof(node->body->ypos));
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->xvel), reinterpret_cast<const char*>(&node->body->xvel) + sizeof(node->body->xvel));
+        buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->body->yvel), reinterpret_cast<const char*>(&node->body->yvel) + sizeof(node->body->yvel));
+    }
+    
+    // Serialize the Quad data (bounds)
+    buffer.insert(buffer.end(), reinterpret_cast<const char*>(&node->quad), reinterpret_cast<const char*>(&node->quad) + sizeof(Quad));
+
+    // Recursively serialize the children if they exist
+    if (node->NW) {
+        serializeTreeNode(node->NW, buffer);
+    } else {
+        buffer.push_back(0); // No NW child
+    }
+    
+    if (node->NE) {
+        serializeTreeNode(node->NE, buffer);
+    } else {
+        buffer.push_back(0); // No NE child
+    }
+
+    if (node->SW) {
+        serializeTreeNode(node->SW, buffer);
+    } else {
+        buffer.push_back(0); // No SW child
+    }
+
+    if (node->SE) {
+        serializeTreeNode(node->SE, buffer);
+    } else {
+        buffer.push_back(0); // No SE child
+    }
+}
+
+void deserializeTreeNode(QuadTree *node, const std::vector<char> &buffer, size_t &offset) {
+    if (offset >= buffer.size()) {
+        return;
+    }
+  
+    // Deserialize the body flag and body index
+    bool has_body = buffer[offset++];
+    if (has_body) {
+        node->body = new Body(); // Create a new Body object
+        node->body->idx = *reinterpret_cast<const int*>(&buffer[offset]);
+        offset += sizeof(int);
+        node->body->mass = *reinterpret_cast<const double*>(&buffer[offset]);
+        offset += sizeof(double);
+        node->body->xpos = *reinterpret_cast<const double*>(&buffer[offset]);
+        offset += sizeof(double);
+        node->body->ypos = *reinterpret_cast<const double*>(&buffer[offset]);
+        offset += sizeof(double);
+        node->body->xvel = *reinterpret_cast<const double*>(&buffer[offset]);
+        offset += sizeof(double);
+        node->body->yvel = *reinterpret_cast<const double*>(&buffer[offset]);
+        offset += sizeof(double);
+    } else {
+        node->body = nullptr;
+    }
+    
+    // Deserialize the quad data
+    node->quad = *reinterpret_cast<const Quad*>(&buffer[offset]);
+    offset += sizeof(Quad);
+
+    // Deserialize the child nodes recursively
+    if (buffer[offset] == 1) {
+        node->NW = new QuadTree(node->quad.NW());
+        offset++;
+        deserializeTreeNode(node->NW, buffer, offset);
+    } else {
+        offset++; // Skip
+    }
+
+    if (buffer[offset] == 1) {
+        node->NE = new QuadTree(node->quad.NE());
+        offset++;
+        deserializeTreeNode(node->NE, buffer, offset);
+    } else {
+        offset++; // Skip
+    }
+
+    if (buffer[offset] == 1) {
+        node->SW = new QuadTree(node->quad.SW());
+        offset++;
+        deserializeTreeNode(node->SW, buffer, offset);
+    } else {
+        offset++; // Skip
+    }
+
+    if (buffer[offset] == 1) {
+        node->SE = new QuadTree(node->quad.SE());
+        offset++;
+        deserializeTreeNode(node->SE, buffer, offset);
+    } else {
+        offset++; // Skip
+    }
 }
