@@ -27,6 +27,7 @@ int main(int argc, char **argv)
     printf("Input file: %s\nOutput file: %s\nSteps: %d\nTheta: %f\nTimestep: %f\nVisual: %s\n", 
             opts.inputfilename, opts.outputfilename, opts.steps, opts.theta, opts.timestep, opts.visual?"true":"false");
     */
+    double t1 = MPI_Wtime();
     MPI_Bcast(&num_bodies, 1, MPI_INT, 0, MPI_COMM_WORLD);
     int bodies_per_proc = num_bodies / num_procs;
     vector<Body> local_bodies(bodies_per_proc);
@@ -84,6 +85,8 @@ int main(int argc, char **argv)
     }   
     if(rank == 0) {
       write_file(&opts, bodies);
+      double t2 = MPI_Wtime();
+      printf("%f", t2 - t1);
     }
 
     MPI_Finalize();
