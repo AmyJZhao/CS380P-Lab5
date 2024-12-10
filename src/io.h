@@ -2,15 +2,14 @@
 #define _IO_H
 
 #include <argparse.h>
-#include "barnes_hut_struct.h"
+#include "bodies.h"
 #include <iostream>
 #include <fstream>
-#include <vector>
 using namespace std;
 
-void read_file(struct options_t* args, int* n_vals, vector<Body>& vec);
+void read_file(struct options_t* args, int *n_vals, Position** position, Velocity** ivelocity, double** mass);
 
-void write_file(struct options_t* args, vector<Body> vec);
+//void write_file(struct options_t* args, vector<Body> vec);
 
-void printBodies(vector<Body> vec);
+//void printBodies(vector<Body> vec);
 #endif

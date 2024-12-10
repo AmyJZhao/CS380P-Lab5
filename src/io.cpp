@@ -1,22 +1,24 @@
 #include "io.h"
 
-void read_file(struct options_t* args, int *n_vals, vector<Body>& vec) {
+void read_file(struct options_t* args, int *n_vals, Position** position, Velocity** ivelocity, double** mass) {
   std::ifstream in;
 	in.open(args->inputfilename);
 	// Get num vals
 	in >> *n_vals;
+  *mass = (double*) malloc(*n_vals * sizeof(double));
+  *position = (Position *) malloc(*n_vals * sizeof(Position));
+  *ivelocity = (Velocity *) malloc(*n_vals * sizeof(Velocity));
   for (int i = 0; i < *n_vals; ++i) {
-    Body newBody;
-    in >> newBody.idx;
-    in >> newBody.xpos;
-    in >> newBody.ypos;
-    in >> newBody.mass;
-    in >> newBody.xvel;
-    in >> newBody.yvel;
-    vec.push_back(newBody);
+    int idx;
+    in >> idx;
+    in >> (*position)[i].px;
+    in >> (*position)[i].py;
+    in >> (*mass)[i];
+    in >> (*ivelocity)[i].vx;
+    in >> (*ivelocity)[i].vy;
   }
 }
-
+/*
 void write_file(struct options_t* args, vector<Body> vec) {
   std::ofstream out;
 	out.open(args->outputfilename, std::ofstream::trunc);
@@ -40,3 +42,4 @@ void printBodies(vector<Body> bodies) {
       
   }
 }
+*/

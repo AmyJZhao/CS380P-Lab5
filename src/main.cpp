@@ -2,10 +2,39 @@
 #include <argparse.h>
 #include <io.h>
 #include <vector>
-#include "barnes_hut_struct.h"
+//#include "barnes_hut_struct.h"
+#include "bodies.h"
 #include <mpi.h>
 using namespace std;
+MPI_Datatype MPI_POSITION;
+MPI_Datatype MPI_VELOCITY;
+void print_position(int rank, int num_bodies, Position* position){
+   int i;
+   for (i = 0; i < num_bodies; i++)
+      printf("Rank=%d, px=%lf, py=%lf\n", rank, position[i].px, position[i].py);
+   printf("\n");
+}
 
+void print_velocity(int rank, int part_size, Velocity *velocity){
+   int i;
+   for (i = 0; i < part_size; i++)
+      printf("Rank=%d, vx=%lf, vy=%lf\n", rank, velocity[i].vx, velocity[i].vy);
+   printf("\n");
+}
+
+void print_ivelocity(int rank, int num_bodies, Velocity *ivelocity){
+   int i;
+   for (i = 0; i < num_bodies; i++)
+      printf("Rank=%d, vx=%lf, vy=%lf\n", rank, ivelocity[i].vx, ivelocity[i].vy);
+   printf("\n");
+}
+
+void print_mass(int rank, int num_bodies, double *mass){
+   int i;
+   for (i = 0; i < num_bodies; i++)
+      printf("Rank=%d, mass=%lf\n", rank, mass[i]);
+   printf("\n");
+}
 
 // ./nbody -i input/nb-10.txt -o output/nb-10-parallel.txt -s 10 -t 0.005 -d 0.005
 int main(int argc, char **argv)
@@ -14,78 +43,36 @@ int main(int argc, char **argv)
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    MPI_Type_contiguous(2, MPI_DOUBLE, &MPI_POSITION);
+    MPI_Type_contiguous(2, MPI_DOUBLE, &MPI_VELOCITY);
+    MPI_Type_commit(&MPI_POSITION);
+    MPI_Type_commit(&MPI_VELOCITY);
     // Parse args
     struct options_t opts;
     get_opts(argc, argv, &opts);
-    vector<Body> bodies;
-    int num_bodies = 0;
-    if(rank == 0) {
-      read_file(&opts, &num_bodies, bodies);
+    int num_total_bodies = 0;
+    Position* position;   // Current positions for all particles
+    Velocity* ivelocity;  // Initial velocity for all particles
+    Velocity* velocity;   // Velocity of particles in current processor
+    double* mass;         // Mass of each particle
+    Force* force;         // Force experienced by all particles
+    read_file(&opts, &num_total_bodies, &position, &ivelocity, &mass);
+    int num_proc_bodies = num_total_bodies / num_procs;
+    int pidx = rank * num_proc_bodies;
+    velocity = (Velocity *) malloc(num_proc_bodies * sizeof(Velocity));
+    for (int i = 0; i < num_proc_bodies; i++){
+      velocity[i].vx = 0;
+      velocity[i].vy = 0;
     }
-
-    /*
-    printf("Input file: %s\nOutput file: %s\nSteps: %d\nTheta: %f\nTimestep: %f\nVisual: %s\n", 
-            opts.inputfilename, opts.outputfilename, opts.steps, opts.theta, opts.timestep, opts.visual?"true":"false");
-    */
-    MPI_Bcast(&num_bodies, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    int bodies_per_proc = num_bodies / num_procs;
-    vector<Body> local_bodies(bodies_per_proc);
-
-    MPI_Scatter(bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE,
-                local_bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE,
-                0, MPI_COMM_WORLD);
+    force = (Force *) malloc(num_proc_bodies * sizeof(Force));
 
     
-    for(int s = 0; s < opts.steps; s++) {
-      QuadTree tree(Quad(4.0, 0.0, 0.0));
-      if(rank == 0) {
-        for (int i = 0; i < bodies.size(); i++) {
-          if(bodies[i].mass >= 0) {
-            tree.insert(bodies[i]);
-          }
-        }
-      }
-      broadcastQuadTree(&tree, rank, MPI_COMM_WORLD);
-      
-      vector<pair<double, double>> local_forces(local_bodies.size());
-      for(int i = 0; i < local_bodies.size(); i++) {
-        if(local_bodies[i].mass >= 0) {
-          auto force = tree.calculateNetForce(bodies[i], opts.theta);
-          double ax = force.first / bodies[i].mass;
-          double ay = force.second / bodies[i].mass;
-          double px = bodies[i].xpos + bodies[i].xvel * opts.timestep + 0.5 * ax * opts.timestep * opts.timestep;
-          double py = bodies[i].ypos + bodies[i].yvel * opts.timestep + 0.5 * ay * opts.timestep * opts.timestep;
-          double vx = bodies[i].xvel + ax * opts.timestep;
-          double vy = bodies[i].yvel + ay * opts.timestep;
-          bodies[i].xpos = px;
-          bodies[i].ypos = py;
-          bodies[i].xvel = vx;
-          bodies[i].yvel = vy;
-          if(px < 0 || px > 4 || py < 0 || py > 4) {
-            bodies[i].mass = -1;
-          }
-        }
-      }
-      if(rank == 0) {
-        MPI_Gather(local_bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE,
-               bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE,
-               0, MPI_COMM_WORLD);
+    MPI_Scatter(ivelocity, num_proc_bodies, MPI_VELOCITY, velocity, num_proc_bodies, MPI_VELOCITY, 0, MPI_COMM_WORLD);
     
-        // Broadcast the updated bodies to all processes
-        MPI_Bcast(bodies.data(), num_bodies * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
-      } else {
-        // For non-root processes, send the updated local_bodies back to the root process
-        MPI_Gather(local_bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE,
-               nullptr, 0, MPI_BYTE, 0, MPI_COMM_WORLD);
-    
-        // Broadcast updated bodies to all processes
-        MPI_Bcast(local_bodies.data(), bodies_per_proc * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
-      }     
-    }   
-    if(rank == 0) {
-      write_file(&opts, bodies);
+    for(int i = 0; i < opts.steps; i++) {
+      QuadTreeNode* quadTree = create_quadTree(num_total_bodies, position, mass);
     }
-
+    
     MPI_Finalize();
     
 }
